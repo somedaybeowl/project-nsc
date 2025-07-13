@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<title>SafeSound</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; }
+  h1 { color: #333; }
+  #result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; }
+  .bully { color: red; font-weight: bold; }
+  .normal { color: green; font-weight: bold; }
+  button { margin: 5px; padding: 8px 15px; }
+</style>
+</head>
+<body>
+
+<div style="text-align: center;">
+  <img src="{{ url_for('static', filename='S.jpg') }}" alt="ไอคอนเสียง" class="responsive-img">
+</div>
+ 
+<h1>ตรวจจับข้อความบูลลี่</h1>
+
+<h2>Recording</h2>
+<button id="startBtn">Start</button>
+<button id="stopBtn" disabled>Stop</button>
+
+<h2>File Upload</h2>
+<form id="uploadForm">
+  <input type="file" id="audioFile" name="audio" accept="audio/*" />
+  <button type="submit">Analyze</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+  let mediaRecorder;
+  let audioChunks = [];
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const resultDiv = document.getElementById('result');
+  const uploadForm = document.getElementById('uploadForm');
+
+  async function sendAudioBlob(blob) {
+    resultDiv.innerHTML = "กำลังวิเคราะห์เสียง...";
+    const formData = new FormData();
+    formData.append('audio', blob, 'recorded.wav');
+    
+    const response = await fetch('/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      resultDiv.innerHTML = "เกิดข้อผิดพลาด: " + response.statusText;
+      return;
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      resultDiv.innerHTML = "ข้อผิดพลาด: " + data.error;
+      return;
+    }
+    if (data.text === "") {
+      resultDiv.innerHTML = "ไม่พบข้อความในไฟล์เสียง";
+      return;
+    }
+
+    const bullyText = data.prediction === 0 ? 
+      `<span class="bully">ข้อความบูลลี่</span>` : 
+      `<span class="normal">ข้อความปกติ</span>`;
+
+    resultDiv.innerHTML = `
+      <p><strong>ข้อความที่ได้:</strong> ${data.text}</p>
+      <p><strong>ผลวิเคราะห์:</strong> ${bullyText}</p>
+      <p><strong>ความน่าจะเป็น:</strong> ${data.proba.map(p => p.toFixed(3)).join(', ')}</p>
+    `;
+  }
+
+  startBtn.onclick = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("เบราว์เซอร์ไม่รองรับการอัดเสียง");
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = e => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      sendAudioBlob(audioBlob);
+    };
+
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    resultDiv.innerHTML = "กำลังอัดเสียง...";
+  };
+
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    resultDiv.innerHTML = "หยุดอัดเสียง กำลังประมวลผล...";
+  };
+
+
+  uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('audioFile');
+    if (!fileInput.files.length) {
+      alert("กรุณาเลือกไฟล์เสียง");
+      return;
+    }
+    const file = fileInput.files[0];
+    sendAudioBlob(file);
+  });
+</script>
+
+</body>
+</html>

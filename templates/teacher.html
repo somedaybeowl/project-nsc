@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard สำหรับครู</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 50px auto; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .bully { color: red; font-weight: bold; }
+        .checked { color: green; font-weight: bold; }
+        form { margin: 0; }
+        button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>ข้อมูลบันทึกข้อความบูลลี่</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ข้อความ</th>
+                <th>ผลวิเคราะห์</th>
+                <th>วันที่-เวลา</th>
+                <th>ครูตรวจสอบแล้ว</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.text }}</td>
+                <td class="{{ 'bully' if r.prediction == 0 else '' }}">
+                    {% if r.prediction == 0 %}บูลลี่{% else %}ปกติ{% endif %}
+                </td>
+                <td>{{ r.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td class="{{ 'checked' if r.teacher_checked else '' }}">
+                    {{ 'ตรวจสอบแล้ว' if r.teacher_checked else 'ยังไม่ตรวจ' }}
+                </td>
+                <td>
+                    {% if not r.teacher_checked %}
+                    <form action="{{ url_for('teacher_check', record_id=r.id) }}" method="post">
+                        <button type="submit">ยืนยันตรวจสอบ</button>
+                    </form>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
