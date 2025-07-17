@@ -10,7 +10,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-MODEL_PATH = "/Users/manutsanan/Downloads/speech to text/vosk-inference/model"
+MODEL_PATH = "/Users/manutsanan/Downloads/project-nsc/vosk-inference/model"
+
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError("ไม่พบโมเดล Vosk ที่ระบุ")
 
